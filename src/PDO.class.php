@@ -119,11 +119,16 @@ class DB
 	
 	private function BuildParams($query, $params = array()){
 		if (!empty($params)) {
-			$array_parameter_found = false;
 			foreach ($params as $parameter_key => $parameter) {
-				if (is_array($parameter)){
-					$array_parameter_found = true;
-					$in = "";
+				// skips $parameter if not array
+				if (!is_array($parameter)) continue;
+				$in = "";
+				// if $parameter is empty just replace :$parameter_key with a random unique string
+				// that hopefully is not present in the DB (this clause should be always false)
+				if (empty($parameter)){
+					$in = "'".md5(uniqid(rand(), true))."'";
+				}
+				else {
 					foreach ($parameter as $key => $value){
 						$name_placeholder = $parameter_key."_".$key;
 						// concatenates params as named placeholders
@@ -132,14 +137,13 @@ class DB
 						$params[$name_placeholder] = $value;
 					}
 					$in = rtrim($in, ", ");
-					$query = preg_replace("/:".$parameter_key."/", $in, $query);
-					// removes array form $params
-					unset($params[$parameter_key]);
 				}
+				$query = preg_replace("/:".$parameter_key."/", $in, $query);
+				// removes array form $params
+				unset($params[$parameter_key]);
+				// updates $this->params
+				$this->parameters = $params;
 			}
-
-			// updates $this->params if $params and $query have changed
-			if ($array_parameter_found) $this->parameters = $params;
 		}
 		return $query;
 	}
